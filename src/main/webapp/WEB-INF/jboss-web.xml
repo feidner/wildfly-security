@@ -1,0 +1,4 @@
+<jboss-web>
+    <security-domain>other</security-domain>
+    <context-root>hfe</context-root>
+</jboss-web>
