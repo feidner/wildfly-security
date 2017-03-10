@@ -1,4 +1,13 @@
 <jboss-web>
-    <security-domain>other</security-domain>
+    <!--security-domain>hfe</security-domain-->
+    <disable-audit>true</disable-audit>
     <context-root>hfe</context-root>
+    <use-jboss-authorization></use-jboss-authorization>
+
+
+    <security-role>
+        <role-name>ROLEME</role-name>
+        <principal-name>feidner</principal-name>
+        <principal-name>geral</principal-name>
+    </security-role>
 </jboss-web>

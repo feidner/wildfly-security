@@ -2,22 +2,23 @@ package hfe;
 
 import javax.annotation.PostConstruct;
 import javax.ejb.Singleton;
-import javax.ejb.Startup;
 import javax.ejb.TransactionManagement;
 import javax.ejb.TransactionManagementType;
-import javax.persistence.EntityManagerFactory;
-import java.io.IOException;
+import javax.naming.InitialContext;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.sql.DataSource;
 import java.net.URL;
 import java.util.Collections;
 import java.util.logging.Logger;
 
-@Startup
+//@Startup
 @Singleton
 @TransactionManagement(value= TransactionManagementType.BEAN)
 public class InitDatabase {
 
-    //@PersistenceContext(unitName = "hfe")
-    private EntityManagerFactory factory;
+    @PersistenceContext(unitName = "hfe")
+    private EntityManager factory;
 
     @PostConstruct
     public void createDatabase() {
@@ -25,8 +26,9 @@ public class InitDatabase {
 
         try {
             URL clazzes = Collections.list(InitDatabase.class.getClassLoader().getResources("/")).stream().filter(url -> url.getPath().contains("classes")).findAny().get();
-            HibernateDDLGenerator.print(clazzes.getPath(), "classes");
-        } catch (IOException e) {
+            DataSource dataSource = (DataSource)new InitialContext().lookup("jboss/datasources/ExampleDS");
+            HibernateDDLGenerator.dropAndCreateEntityTables(dataSource, clazzes.getPath(), "classes");
+        } catch (Exception e) {
             Logger.getLogger("InitDatabase").info(e.getMessage());
         }
 

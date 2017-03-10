@@ -7,8 +7,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.logging.Logger;
 
-@ApplicationPath("/")
+@ApplicationPath("/restme")
 public class HfeApplication extends Application {
+
 
     @Path("/")
     public static class Service {

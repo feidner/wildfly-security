@@ -4,16 +4,17 @@
          version="3.0">
 
 
-    <login-config>
-        <auth-method>BASIC</auth-method>
-    </login-config>
+        <login-config>
+            <auth-method>BASIC</auth-method>
+            <!--realm-name>hfe</realm-name-->
+        </login-config>
 
     <security-constraint>
         <web-resource-collection>
-            <url-pattern>/dede/*</url-pattern>
+            <url-pattern>/secure/*</url-pattern>
         </web-resource-collection>
         <auth-constraint>
-            <role-name>ADMIN</role-name>
+            <role-name>ROLEME</role-name>
         </auth-constraint>
     </security-constraint>
 
@@ -30,9 +31,5 @@
             <url-pattern>/front/app/css/main.css</url-pattern>
         </web-resource-collection>
     </security-constraint-->
-
-    <security-role>
-        <role-name>ADMIN</role-name>
-    </security-role>
 
 </web-app>
