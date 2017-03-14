@@ -1,13 +1,10 @@
 <jboss-web>
-    <!--security-domain>hfe</security-domain-->
+    <!--security-domain>henrik</security-domain-->
     <disable-audit>true</disable-audit>
     <context-root>hfe</context-root>
     <use-jboss-authorization></use-jboss-authorization>
 
-
-    <security-role>
+    <!--<security-role>
         <role-name>ROLEME</role-name>
-        <principal-name>feidner</principal-name>
-        <principal-name>geral</principal-name>
-    </security-role>
+    </security-role-->
 </jboss-web>
