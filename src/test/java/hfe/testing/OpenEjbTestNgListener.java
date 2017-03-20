@@ -1,6 +1,6 @@
 package hfe.testing;
 
-import hfe.testing.openejb.TestEjbContainer;
+import hfe.testing.openejb.EmbeddedContainer;
 import hfe.testing.openejb.TransactionBean;
 import org.testng.*;
 
@@ -16,8 +16,8 @@ public class OpenEjbTestNgListener implements IInvokedMethodListener, IHookable 
 
     @Override
     public void beforeInvocation(IInvokedMethod method, ITestResult testResult) {
-        TestEjbContainer.start(this, testResult.getTestClass().getRealClass());
-        TestEjbContainer.applyCdiToObject(testResult.getInstance());
+        EmbeddedContainer.start(this, testResult.getTestClass().getRealClass());
+        EmbeddedContainer.applyCdiToObject(testResult.getInstance());
     }
 
     @Override

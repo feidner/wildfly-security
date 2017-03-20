@@ -1,7 +1,6 @@
 package hfe.testing.openejb;
 
 import hfe.testing.OpenEjbTestNgListener;
-import hfe.tools.Reject;
 import hfe.tools.StackTrace;
 import hfe.tools.StopWatch;
 import org.apache.commons.collections.CollectionUtils;
@@ -41,7 +40,9 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class TestEjbContainer {
+import static java.lang.String.format;
+
+public class EmbeddedContainer {
 
     private static final String DEFAULT_EMBEDDED_DATABASE = "h2-tcp";
     private static final String DATA_SOURCE_SYSTEM_PROPERTY_KEY = "dataSource";
@@ -57,11 +58,6 @@ public class TestEjbContainer {
 
     private static final Set<String> INCLUDES = Stream.of("hfe.(beans).*").collect(Collectors.toSet());
 
-    private static final Set<String> DEFINITLY_INCLUDES = new HashSet<>();
-
-
-    private static final Map<String, Collection<String>> MAIN_PROGRAMM_EXCLUDES = new HashMap<>();
-
     private static final Set<String> UI_EXCLUDES = Stream.of(
             ".*\\${1}.*"
     ).collect(Collectors.toSet());
@@ -72,9 +68,9 @@ public class TestEjbContainer {
 
     private static org.h2.tools.Server h2Server;
     private static EJBContainer container;
-    private static final Logger log = Logger.getLogger(TestEjbContainer.class.getSimpleName());
+    private static final Logger log = Logger.getLogger(EmbeddedContainer.class.getSimpleName());
 
-    private TestEjbContainer() {
+    private EmbeddedContainer() {
     }
 
     //@Test
@@ -88,13 +84,13 @@ public class TestEjbContainer {
         Filter includeFilter = Filters.patterns(".*(target/classes|backend).*");
         IncludeExcludeFilter filter = new IncludeExcludeFilter(includeFilter, Filters.patterns("(((.(?!SNAPSHOT))*|.*tests)\\.jar|.*test-classes)"));
 
-        log.info(String.format("Accept %s: %s", s1, filter.accept(s1)));
-        log.info(String.format("Accept %s: %s", s2, filter.accept(s2)));
-        log.info(String.format("Accept %s: %s", s3, filter.accept(s3)));
+        log.info(format("Accept %s: %s", s1, filter.accept(s1)));
+        log.info(format("Accept %s: %s", s2, filter.accept(s2)));
+        log.info(format("Accept %s: %s", s3, filter.accept(s3)));
 
-        log.info(String.format("Accept %s: %s", s4, filter.accept(s4)));
-        log.info(String.format("Accept %s: %s", s5, filter.accept(s5)));
-        log.info(String.format("Accept %s: %s", s6, filter.accept(s6)));
+        log.info(format("Accept %s: %s", s4, filter.accept(s4)));
+        log.info(format("Accept %s: %s", s5, filter.accept(s5)));
+        log.info(format("Accept %s: %s", s6, filter.accept(s6)));
     }
 
     public static void start(Object obj) {
@@ -157,7 +153,6 @@ public class TestEjbContainer {
          */
         callers.add(classToTest.getCanonicalName());
         callers.add(OpenEjbTestNgListener.class.getCanonicalName());
-        //callers.add(TransactionBean.class.getCanonicalName());
 
         boolean isIntellijJunitStarter = false, isIntellijJunitGroupStarter = false;
         if(StackTrace.currentMatches(".*org\\.junit", currentStacktrace)) {
@@ -167,11 +162,11 @@ public class TestEjbContainer {
         } else if(StackTrace.currentMatches(".*org\\.testng.*", currentStacktrace)) {
             isIntellijJunitStarter = true;
         } else {
-            Reject.developmentError("Testframework ist nicht bekannt!");
+            throw new RuntimeException("Testframework ist nicht bekannt!");
         }
 
         boolean isMainProgram = StackTrace.currentMatches(".*hfe\\..*main\\(.*", currentStacktrace);
-        log.info(String.format("Test: %s, isIntellijJunitStarter: %s, isIntellijJunitGroupStarter: %s, isMainProgram: %s",
+        log.info(format("Test: %s, isIntellijJunitStarter: %s, isIntellijJunitGroupStarter: %s, isMainProgram: %s",
                 classToTest.getSimpleName(), isIntellijJunitStarter, isIntellijJunitGroupStarter, isMainProgram));
 
         if (!isIntellijJunitGroupStarter && (isIntellijJunitStarter || isMainProgram)) {
@@ -204,7 +199,7 @@ public class TestEjbContainer {
                     excludes.addAll(EXCLUDES);
                 }
                 Properties properties = PropertiesProvider.createFromStandalonXmlCheckedIn(DEFAULT_EMBEDDED_DATABASE);
-                createFilteredContainer(classToTest, properties , callers, new HashSet<>(DEFINITLY_INCLUDES), includes, excludes);
+                createFilteredContainer(classToTest, properties , callers, new HashSet<>(), includes, excludes);
             }
         } else {
 
@@ -213,12 +208,12 @@ public class TestEjbContainer {
             Set<String> annotatedTests = getAnnotatedTests(testClassPath, classLoader);
             if (annotatedTests.contains(classToTest.getCanonicalName())) {
                 callers.remove(classToTest.getCanonicalName());
-                log.info(String.format("### ClasstoTest(%s) contained in Annotated-Tests", classToTest.getCanonicalName()));
+                log.info(format("### ClasstoTest(%s) contained in Annotated-Tests", classToTest.getCanonicalName()));
             }
 
             Set<String> testsNeedEjbContainer = getTestsNeedEjbContainer(testClassPath);
             @SuppressWarnings("unchecked") Collection<String> testsNeededEjbContainerSkipAnnotatedTests = CollectionUtils.subtract(testsNeedEjbContainer, annotatedTests);
-            log.info(String.format("### Tests not annotated but need Ejb-Container: %s", testsNeededEjbContainerSkipAnnotatedTests));
+            log.info(format("### Tests not annotated but need Ejb-Container: %s", testsNeededEjbContainerSkipAnnotatedTests));
 
             callers.addAll(testsNeededEjbContainerSkipAnnotatedTests);
 
@@ -246,8 +241,8 @@ public class TestEjbContainer {
         } else {
             String propertyName = System.getProperty(DATA_SOURCE_SYSTEM_PROPERTY_KEY);
             properties = PropertiesProvider.createFromStandalonXmlCheckedIn(propertyName);
-            Reject.ifNull(String.format("Diese Property-Datei liefert keine Properties: %s.properties", propertyName), properties);
-            log.info(String.format("### Genutzte Property-Datei: %s.properties", propertyName));
+            assert properties != null : String.format("Diese Property-Datei liefert keine Properties: %s.properties", propertyName);
+            log.info(format("### Genutzte Property-Datei: %s.properties", propertyName));
         }
         return properties;
     }
@@ -258,10 +253,10 @@ public class TestEjbContainer {
         if (!ejbAnnotated.isEmpty()) {
             definitly.add(cdiIncudes(ejbAnnotated));
             //ejbAnnotated.stream().filter(f -> f.getType() != TransactionBean.class).forEach(f -> callers.add(f.getType().getCanonicalName()));
-            ejbAnnotated.stream().forEach(f -> callers.add(f.getType().getCanonicalName()));
+            ejbAnnotated.forEach(f -> callers.add(f.getType().getCanonicalName()));
         }
 
-        log.info(String.format("### Callers: %s", callers));
+        log.info(format("### Callers: %s", callers));
 
         Set<Field> injectAnnotated = allAnnotations.get(javax.inject.Inject.class);
         if (!injectAnnotated.isEmpty()) {
@@ -283,7 +278,8 @@ public class TestEjbContainer {
         Map<Class<?>, Set<Field>> annotatetdClasses = new HashMap<>();
         annotatetdClasses.put(javax.ejb.EJB.class, new HashSet<>());
         annotatetdClasses.put(javax.inject.Inject.class, new HashSet<>());
-        findEjbs(annotatetdClasses, allNonStaticFields(toTest), new HashSet<>());
+        List<Field> allNonStaticFields = allNonStaticFields(toTest);
+        findEjbs(annotatetdClasses, allNonStaticFields, new HashSet<>());
         return annotatetdClasses;
     }
 
@@ -316,7 +312,7 @@ public class TestEjbContainer {
                         result.get(javax.inject.Inject.class).addAll(injectFields);
                     }
                 } catch (ClassNotFoundException e) {
-                    throw Reject.developmentError(e);
+                    throw new RuntimeException(e);
                 }
             }
         });
@@ -337,7 +333,7 @@ public class TestEjbContainer {
                     findFieldTypeInstance(instanceFields, injectedFields, already);
                 }
             } catch (ClassNotFoundException e) {
-                throw Reject.developmentError(e);
+                throw new RuntimeException(e);
             }
         });
     }
@@ -346,17 +342,12 @@ public class TestEjbContainer {
     private static void createAndApplyContainer(Properties properties, Object obj, Class<?> classToTest, Set<String> callers, Runnable runThisInContainer) {
         startH2(properties);
         try {
-            Set<String> includes = Stream.of(".*").collect(Collectors.toSet());;
-            Set<String> excludes = new HashSet<>();
-            if (MAIN_PROGRAMM_EXCLUDES.containsKey(classToTest.getCanonicalName())) {
-                excludes.addAll(MAIN_PROGRAMM_EXCLUDES.get(classToTest.getCanonicalName()));
-            } else {
-                excludes.addAll(EXCLUDES);
-            }
+            Set<String> includes = Stream.of(".*").collect(Collectors.toSet());
+            Set<String> excludes = new HashSet<>(EXCLUDES);
             for (Object key : properties.keySet()) {
-                log.fine(String.format("## %s = %s", key, properties.get(key)));
+                log.fine(format("## %s = %s", key, properties.get(key)));
             }
-            createFilteredContainer(classToTest, properties, callers, new HashSet<>(DEFINITLY_INCLUDES), includes, excludes);
+            createFilteredContainer(classToTest, properties, callers, new HashSet<>(), includes, excludes);
             applyCdiToObject(obj);
             if (runThisInContainer != null) {
                 runThisInContainer.run();
@@ -371,19 +362,18 @@ public class TestEjbContainer {
                 map(f -> f.getType().getSimpleName()).
                 collect(Collectors.toSet()). // hfe: Dies wird gemacht um keine doppelten Eintraege zu haben
                 stream().
-                reduce((s1, s2) -> String.format("%s|%s", s1, s2)).
+                reduce((s1, s2) -> format("%s|%s", s1, s2)).
                 get();
-        String cdiIncludes = String.format(".*(%s)", injects);
-        return cdiIncludes;
+        return format(".*(%s)", injects);
     }
 
     private static File getTestClassPath(ClassLoader classLoader) {
         SystemInstance.get().setProperty(DeploymentFilterable.CLASSPATH_INCLUDE, ".*(test/classes|test-classes).*");
         SystemInstance.get().setProperty(DeploymentFilterable.CLASSPATH_FILTER_DESCRIPTORS, Boolean.TRUE.toString());
         List<File> modules = new ConfigurationFactory().getModulesFromClassPath(null, classLoader);
-        Reject.ifFalse("Es muss genau ein Pfad mit Testklassen vorliegen", modules.size() == 1);
+        assert modules.size() == 1 : "Es muss genau ein Pfad mit Testklassen vorliegen";
         File testClassPath = modules.get(0);
-        log.info(String.format("### TestClassPath: %s", testClassPath.getAbsolutePath()));
+        log.info(format("### TestClassPath: %s", testClassPath.getAbsolutePath()));
         return testClassPath;
     }
 
@@ -392,10 +382,10 @@ public class TestEjbContainer {
         try {
             AnnotationFinder finder = new AnnotationFinder(ClasspathArchive.archive(classLoader, testClassPath.toURI().toURL()));
             Set<String> annotatedTests = finder.findAnnotatedClasses(javax.annotation.ManagedBean.class).stream().map(Class::getCanonicalName).collect(Collectors.toSet());
-            log.info(String.format("### AnnotationFinder for Tests = %s", st.stop()));
+            log.info(format("### AnnotationFinder for Tests = %s", st.stop()));
             return annotatedTests;
         } catch (MalformedURLException e) {
-            throw Reject.developmentError(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -403,9 +393,8 @@ public class TestEjbContainer {
         StopWatch st = StopWatch.createAndStart();
         Collection<File> files = FileUtils.listFiles(classPath, new String[]{"class"}, true);
         Set<File> runningTests = files.stream().filter(f -> !f.getName().contains("$") && f.getName().matches(regex)).collect(Collectors.toSet());
-        log.info(String.format("### Zeit fuer Klassensuche: %s, Pfad: %s, Regex: %s", st.stop(), classPath, regex));
-        Set<String> classNames = runningTests.stream().map(f -> FilenameUtils.getBaseName(f.getPath().substring(classPath.getPath().length() + 1).replaceAll("\\" + File.separator, "."))).collect(Collectors.toSet());
-        return classNames;
+        log.info(format("### Zeit fuer Klassensuche: %s, Pfad: %s, Regex: %s", st.stop(), classPath, regex));
+        return runningTests.stream().map(f -> FilenameUtils.getBaseName(f.getPath().substring(classPath.getPath().length() + 1).replaceAll("\\" + File.separator, "."))).collect(Collectors.toSet());
     }
 
     private static Set<String> getTestsNeedEjbContainer(File testClassPath) {
@@ -451,11 +440,11 @@ public class TestEjbContainer {
                     }
                 }
             } catch (ClassNotFoundException e) {
-                throw Reject.developmentError(e);
+                throw new RuntimeException(e);
             }
             return false;
         }).collect(Collectors.toSet());
-        log.info(String.format("### ClassSearch for Tests = %s", st.stop()));
+        log.info(format("### ClassSearch for Tests = %s", st.stop()));
         return testsNeedEjbContainer;
     }
 
@@ -483,7 +472,7 @@ public class TestEjbContainer {
 
             StopWatch watch = StopWatch.createAndStart();
             EJBContainer ejbContainer = EJBContainer.createEJBContainer(dataSourceProperties);
-            log.info(String.format("### ContainerBuildTime: %s", watch.stop()));
+            log.info(format("### ContainerBuildTime: %s", watch.stop()));
             container = ejbContainer;
         } catch (Exception e) {
             log.log(Level.SEVERE, "OpenEjb-Container konnte nicht gestartet werden", e);
@@ -498,7 +487,7 @@ public class TestEjbContainer {
             try {
                 List<String> guardNames = executeSqlSelect(null, "SELECT NAME FROM SCHEMA_GUARD");
                 if (!guardNames.isEmpty()) {
-                    throw Reject.developmentError("Ein oder mehrere Datenbank-Waechter sind gesetzt:\n" + StringUtils.join(guardNames, "    \n"));
+                    throw new RuntimeException("Ein oder mehrere Datenbank-Waechter sind gesetzt:\n" + StringUtils.join(guardNames, "    \n"));
                 }
             } catch (SQLException ignore) {
                 // kein guard tabelle
@@ -516,7 +505,7 @@ public class TestEjbContainer {
                         obj.toString().contains("JdbcUrl")).findAny().get());
                 DriverManager.getConnection(dbUrl, "sa", "sa");
             } catch (SQLException | ClassNotFoundException e) {
-                throw Reject.developmentError(e);
+                throw new RuntimeException(e);
             }
         }
     }
@@ -558,7 +547,7 @@ public class TestEjbContainer {
         return result;
     }
 
-    public enum SchemaGuard {
+    private enum SchemaGuard {
         CANCEL_PROCESS, IGNORE_SCHEMA_GUARD;
     }
 }

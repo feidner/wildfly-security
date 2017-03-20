@@ -1,6 +1,5 @@
 package hfe.testing.openejb;
 
-import hfe.tools.Reject;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.AbstractFileFilter;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
@@ -25,12 +24,12 @@ class PropertiesSelector {
 
     public static void main(String[] args) {
         Logger.getLogger("MAU").info("run me");
-        Reject.ifFalse("Genau ein Parameter wird erwartet, ein Ordner", args.length == 1);
+        assert args.length == 1 : "Genau ein Parameter wird erwartet, ein Ordner";
         runWithSelectedProperties(null, file -> {
             try {
                 FileUtils.copyFile(file, new File(args[0] + File.separator + "selected.properties"));
             } catch (IOException e) {
-                throw Reject.developmentError(e);
+                throw new RuntimeException(e);
             }
         });
     }

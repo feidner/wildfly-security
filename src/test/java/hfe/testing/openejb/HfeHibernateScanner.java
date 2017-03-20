@@ -1,6 +1,5 @@
 package hfe.testing.openejb;
 
-import hfe.tools.Reject;
 import org.apache.commons.io.FileUtils;
 import org.hibernate.boot.archive.internal.FileInputStreamAccess;
 import org.hibernate.boot.archive.internal.JarFileBasedArchiveDescriptor;
@@ -21,7 +20,7 @@ import java.util.stream.Collectors;
  * Der Scanne findet alle Entities in Packete, die irgendwo im Namen entity haben.
  * Andere Entities werden nicht gefunden.
  */
-public class StfpHibernateScanner implements Scanner {
+public class HfeHibernateScanner implements Scanner {
 
     @Override
     public ScanResult scan(ScanEnvironment environment, ScanOptions options, ScanParameters params) {
@@ -40,7 +39,7 @@ public class StfpHibernateScanner implements Scanner {
             }
             return collector.toScanResult();
         } catch (URISyntaxException e) {
-            throw Reject.developmentError(e);
+            throw new RuntimeException(e);
         }
     }
 
