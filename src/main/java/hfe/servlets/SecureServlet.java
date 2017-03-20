@@ -1,4 +1,6 @@
-package hfe;
+package hfe.servlets;
+
+import hfe.beans.DoSomething;
 
 import javax.inject.Inject;
 import javax.servlet.ServletException;

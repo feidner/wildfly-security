@@ -1,4 +1,4 @@
-package hfe;
+package hfe.beans;
 
 import org.jboss.ejb3.annotation.SecurityDomain;
 

@@ -1,4 +1,4 @@
-package hfe;
+package hfe.tools;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
@@ -17,20 +17,18 @@ import javax.sql.DataSource;
 import java.io.File;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.net.URL;
 import java.util.List;
 import java.util.logging.Logger;
 
 import static java.util.stream.Collectors.toList;
 
-class HibernateDDLGenerator {
+public class HibernateDDLGenerator {
 
-    private static List<Class<?>> findEntityClasses(String directoryPath, String preffixPath) {
-        return FileUtils.listFiles(new File(directoryPath), new String[]{"class"}, true).stream()
+    private static List<Class<?>> findEntityClasses(URL dir) {
+        return FileUtils.listFiles(new File(dir.getPath()), new String[]{"class"}, true).stream()
                 .map(File::getPath)
-                .map(className -> extractClassNameFromFileName(className, preffixPath))
+                .map(className -> extractClassNameFromFileName(dir, className))
                 .map(HibernateDDLGenerator::loadExistingClass)
                 .filter(clazz -> clazz.getAnnotation(Entity.class) != null)
                 .collect(toList());
@@ -44,10 +42,12 @@ class HibernateDDLGenerator {
         }
     }
 
-    private static String extractClassNameFromFileName(String filePath, String pathName) {
-        String className = filePath.substring(filePath.lastIndexOf(pathName + "\\"), filePath.indexOf(".class"));
-        className = className.replace(pathName + "\\", "");
-        className = className.replaceAll("\\\\", ".");
+    private static String extractClassNameFromFileName(URL dir, String filePath) {
+        String dirPath = dir.getPath().substring(1);
+        String filePlattform = filePath.replaceAll("\\\\", "/");
+        String className = filePlattform.substring(dirPath.length());
+        className = className.substring(0, className.indexOf(".class"));
+        className = className.replaceAll("/", ".");
         return className;
     }
 
@@ -68,29 +68,26 @@ class HibernateDDLGenerator {
         return schemaExport;
     }
 
-    static void dropAndCreateEntityTables(DataSource dataSource, String dir, String preffixPath) throws Exception {
-        List<Class<?>> allEntityClasses = findEntityClasses(dir, preffixPath);
+    public static void dropEntityTables(DataSource dataSource, URL dir) throws Exception {
+        handleEntityTables(dataSource, dir, true);
+    }
+
+    public static void createEntityTables(DataSource dataSource, URL dir) throws Exception {
+        handleEntityTables(dataSource, dir, false);
+    }
+
+    private static void handleEntityTables(DataSource dataSource, URL dir, boolean drop) throws Exception {
+        List<Class<?>> allEntityClasses = findEntityClasses(dir);
         SchemaExport schemaExport = buildSchemaExport(dataSource, null, allEntityClasses);
         PrintStream stdout = System.out;
         OutputStream stringOut = new ByteArrayOutputStream();
         System.setOut(new PrintStream(stringOut));
-        schemaExport.execute(true, true, true, false);
-        for(int i = 0; i++ < 30; stringOut.write('-'));
-        schemaExport.execute(true, true, false, true);
+        if(drop) {
+            schemaExport.execute(true, true, true, false);
+        } else {
+            schemaExport.execute(true, true, false, true);
+        }
         System.setOut(stdout);
         Logger.getLogger(HibernateDDLGenerator.class.getSimpleName()).info(stringOut.toString());
-        readAllTablesFromDatabaseExceptRebuildTable(dataSource);
-    }
-
-    private static void readAllTablesFromDatabaseExceptRebuildTable(DataSource dataSource) throws NamingException, SQLException {
-        Statement statement = dataSource.getConnection().createStatement();
-        statement.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='PUBLIC' ORDER BY TABLE_NAME");
-        ResultSet rs = statement.getResultSet();
-        Logger.getLogger(HibernateDDLGenerator.class.getSimpleName()).info("Tabellen......");
-        while(rs.next()) {
-            Logger.getLogger(HibernateDDLGenerator.class.getSimpleName()).info(rs.getString(1));
-        }
-        rs.close();
-        statement.close();
     }
 }

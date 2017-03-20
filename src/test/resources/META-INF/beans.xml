@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<beans xmlns="http://java.sun.com/xml/ns/javaee"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation=" http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/beans_1_0.xsd">
+
+    <alternatives>
+        <!--<class>com.siemens.sfs.stfp.shared.app.scd.LdapAccessAlternative</class>-->
+        <!-- <class>com.siemens.sfs.stfp.shared.app.scheduling.BatchjobControllerContainerLifecycleAlternative</class> -->
+        <!--class>com.siemens.sfs.stfp.shared.app.startup.impl.DataModelVersionCheckerTestImpl</class-->
+        <!--class>com.siemens.sfs.stfp.lineagreement.app.lineaccount.HfeMockDebtorAmountProvider</class-->
+    </alternatives>
+</beans>

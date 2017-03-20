@@ -17,31 +17,63 @@ repositories {
     }
 }
 
+sourceSets {
+    main {
+        output.resourcesDir = "build/classes/main"
+    }
+    test {
+        output.resourcesDir = "build/classes/test"
+    }
+}
+
 dependencies {
     compile 'commons-io:commons-io:2.4'
+    compile 'commons-collections:commons-collections:3.2.2'
+
 
     //compileOnly group: 'org.picketbox', name: 'jbosssx', version: '4.9.7.Final'
     compileOnly 'org.picketbox:picketbox:4.9.6.Final'
-    compileOnly group: 'org.jboss.ejb3', name: 'jboss-ejb3-ext-api', version: '2.2.0.Final'
-    compileOnly group: 'javax.ws.rs', name: 'jsr311-api', version: '1.1.1'
+    compileOnly 'org.jboss.ejb3:jboss-ejb3-ext-api:2.2.0.Final'
+    compileOnly 'javax.ws.rs:jsr311-api:1.1.1'
     compileOnly 'org.jboss.spec.javax.ejb:jboss-ejb-api_3.2_spec:1.0.0.Final'
-    compileOnly 'org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.0.Final'
-    compileOnly 'org.hibernate:hibernate-core:5.0.10.Final'
     compileOnly 'org.jboss.spec.javax.annotation:jboss-annotations-api_1.1_spec:1.0.0.Final'
-    compileOnly group: 'io.undertow', name: 'undertow-servlet', version: '1.4.0.Final'
-    compileOnly group: 'javax.inject', name: 'javax.inject', version: '1'
+    compileOnly 'io.undertow:undertow-servlet:1.4.0.Final'
+    compileOnly 'javax.inject:javax.inject:1'
+    compileOnly 'javax.enterprise:cdi-api:1.2'
 
+    compileOnly 'org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.0.Final'
+    compileOnly 'org.hibernate:hibernate-core:5.0.12.Final'
 
-
-    testCompile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.3'
+    testCompile 'org.apache.httpcomponents:httpclient:4.5.3'
     testCompile 'org.testng:testng:6.11'
-    testCompile group: 'jdom', name: 'jdom', version: '1.1'
+    testCompile 'jdom:jdom:1.1'
+    testCompile 'com.h2database:h2:1.4.193'
+    testCompile 'org.apache.derby:derby:10.13.1.1'
 
-    testCompile group: 'org.wildfly', name: 'wildfly-security', version: '10.1.0.Final'
+    testCompile 'org.apache.commons:commons-lang3:3.4'
+    testCompile ('org.apache.openejb:openejb-core:4.7.4') {
+        exclude module: 'javaee-api'
+        exclude module: 'hsqldb'
+        //exclude module: 'slf4j-jdk14'
+        //exclude module: 'slf4j-api'
+    }
+    testCompile 'org.apache.xbean:xbean-finder-shaded:4.2'
+    testCompile 'commons-collections:commons-collections:3.2.2'
+    testCompile 'org.apache.maven.shared:maven-shared-utils:3.0.0'
+
+    testCompile 'org.hibernate:hibernate-core:5.0.12.Final'
+    testCompile 'org.hibernate:hibernate-entitymanager:5.0.12.Final'
+
+    testCompile 'javax.enterprise:cdi-api:1.2'
+    testCompile 'javax.validation:validation-api:1.1.0.Final'
+    testCompile 'org.apache.tomee:javaee-api:7.0-1'
+
+
+    //testCompile group: 'org.wildfly', name: 'wildfly-security', version: '10.1.0.Final'
     //testCompileOnly group: 'org.wildfly', name: 'wildfly-security', version: '10.1.0.Final'
     //testCompileOnly group: 'org.wildfly', name: 'wildfly-undertow', version: '10.1.0.Final'
     //testCompileOnly group: 'org.wildfly.core', name: 'wildfly-server', version: '2.2.0.Final'
-    testCompileOnly group: 'org.jboss.metadata', name: 'jboss-metadata-web', version: '10.0.0.Final'
+    //testCompileOnly group: 'org.jboss.metadata', name: 'jboss-metadata-web', version: '10.0.0.Final'
     //testCompileOnly group: 'io.undertow', name: 'undertow-websockets-jsr', version: '1.4.11.Final'
 
 
