@@ -15,39 +15,47 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 class PropertiesProvider {
 
     static final String EMBEDDED_H2 = "embedded.h2";
 
     private static final String DB_DRIVER_CLASS_PARAMETER = "ds.db.driver.class";
-    private static final String DB_DIALECT_PARAMETER = "ds.db.dialect";
     private static final String STANDALONE_PATH = "/db-properties/standalone.xml";
 
     private static final Function<String, File> FILE_SUPPLIER = name ->
-        Arrays.stream(new String[] { name, "__" + name}).
+            Stream.of( name, "__" + name).
             map(s -> String.format("/db-properties/%s.properties", s)).
             filter(resourceName -> PropertiesProvider.class.getResource(resourceName) != null).
             map(PropertiesProvider.class::getResource).
             map(PropertiesProvider::toFile).
             findAny().
-            get();
+            orElseThrow(() -> new RuntimeException(String.format("Datei /db-properties/%s.properties kann nicht gefunden werden", name)));
 
     private PropertiesProvider() {
     }
 
     static Properties createFromStandalonXmlCheckedIn(String name, String h2DbName) {
-        Properties properties = createFromStandalonXmlCheckedIn(FILE_SUPPLIER.apply(name));
+        Properties result;
+        try {
+            result = readDbConnectionProperties(PropertyUtils.loadProperties(FILE_SUPPLIER.apply(name)));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        Properties properties = result;
         if(StringUtils.isNotEmpty(h2DbName)) {
             // jdbc:h2:file:C:/data/test
             // jdbc:h2:tcp://localhost/~/testH2;DB_CLOSE_DELAY=-1;MVCC=TRUE
-            String keyDbUrl = (String) properties.keySet().stream().filter(obj -> obj.toString().contains("JdbcUrl")).findAny().get();
+            String keyDbUrl = (String) properties.keySet().stream().
+                    filter(obj -> obj.toString().contains("JdbcUrl")).
+                    findAny().
+                    orElseThrow(() -> new RuntimeException("In den Properties kann kein Key mit dem Substring JdbcUrl gefunden werden"));
             //String dbUrl = properties.getProperty(keyDbUrl);
             //String newUrl = dbUrl.substring(0, dbUrl.lastIndexOf("/") + 1) + h2DbName + dbUrl.substring(dbUrl.indexOf(";"));
             h2DbName = (h2DbName.startsWith("/") || h2DbName.contains(":/")) ? h2DbName : "./" + h2DbName;
@@ -58,12 +66,8 @@ class PropertiesProvider {
     }
 
     static Properties createFromStandalonXmlCheckedIn(String name) {
-        return createFromStandalonXmlCheckedIn(FILE_SUPPLIER.apply(name));
-    }
-
-    static Properties createFromStandalonXmlCheckedIn(File file) {
         try {
-            return readDbConnectionProperties(PropertyUtils.loadProperties(file));
+            return readDbConnectionProperties(PropertyUtils.loadProperties(FILE_SUPPLIER.apply(name)));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -71,16 +75,20 @@ class PropertiesProvider {
 
     // ############## privates ##############################
 
-    private static String evaluateDsName(String jndiName, Predicate<String> match) {
+    private static String evaluateDsName(String jndiName, Predicate<String> filterConstraint) {
         String dsNamePossibility_1 = jndiName.substring(jndiName.lastIndexOf('/') + 1);
         String dsNamePossibility_2 = jndiName.substring(jndiName.lastIndexOf('/') + 1, jndiName.length() - 2); // falls mit DS endet
-        return Arrays.stream(new String[] { dsNamePossibility_1, dsNamePossibility_1.toLowerCase(), dsNamePossibility_1.toUpperCase(), dsNamePossibility_2,
-                dsNamePossibility_2.toLowerCase(), dsNamePossibility_2.toUpperCase()}).filter(match::test).findAny().get();
+        return Stream.of(
+                dsNamePossibility_1, dsNamePossibility_1.toLowerCase(), dsNamePossibility_1.toUpperCase(),
+                dsNamePossibility_2, dsNamePossibility_2.toLowerCase(), dsNamePossibility_2.toUpperCase()).
+                filter(filterConstraint).
+                findAny().
+                orElseThrow(() -> new RuntimeException("jndiName kann im Predicate nicht gefunden werden"));
     }
     private static Properties createJndiPropertiesForDataSourceDefinition(Properties dbFileProperties, Map<String, String> drivers, Element element) {
         Properties properties = new Properties();
         String jndiName = element.getAttribute("jndi-name");
-        String dsName = evaluateDsName(jndiName, name -> dbFileProperties.containsKey(name + "." + DB_DIALECT_PARAMETER));
+        String dsName = evaluateDsName(jndiName, name -> dbFileProperties.containsKey(name + "." + DB_DRIVER_CLASS_PARAMETER));
         String jndiValue = "new://Resource?type=DataSource";
         if (jndiName.startsWith("java:")) {
             String alias = "/" + jndiName.substring("java:".length());
@@ -96,7 +104,6 @@ class PropertiesProvider {
         properties.put(jndiName + ".JdbcUrl", dbFileProperties.getProperty(getValue(element, "connection-url", true)));
         properties.put(jndiName + ".Username", dbFileProperties.getProperty(getValue(element, "user-name", true)));
         properties.put(jndiName + ".Password", dbFileProperties.getProperty(getValue(element, "password", true)));
-        properties.put("hibernate.dialect", dbFileProperties.getProperty(dsName + "." + DB_DIALECT_PARAMETER));
         return properties;
     }
 
@@ -105,7 +112,7 @@ class PropertiesProvider {
         return isParameter ? PropertyPlaceHolderHelper.simpleValue(node.getNodeValue()) : node.getNodeValue();
     }
 
-    private static Properties readDbConnectionProperties(Properties dbFileProperties) throws ParserConfigurationException, IOException, SAXException {
+    static Properties readDbConnectionProperties(Properties dbFileProperties) throws ParserConfigurationException, IOException, SAXException {
         Document standaloneXmlDocument = DocumentBuilderFactory.newInstance().newDocumentBuilder().
                 parse(PropertiesProvider.class.getResource(STANDALONE_PATH).openStream());
         standaloneXmlDocument.getDocumentElement().normalize();

@@ -1,4 +1,4 @@
-package hfe;
+package hfe.rest;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Application;

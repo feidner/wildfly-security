@@ -33,7 +33,10 @@ public class InitialApplicationTest {
         };
     }
 
+    @Test
+    public void createDB() {
 
+    }
 
     @Test(dataProvider = "users")
     public void insert(String name, String password, Set<Role> roles) {

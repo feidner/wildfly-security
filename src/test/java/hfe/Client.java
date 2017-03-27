@@ -24,7 +24,7 @@ public class Client {
         UsernamePasswordCredentials credentials = new UsernamePasswordCredentials("feidner", "10Hendi!");
         provider.setCredentials(AuthScope.ANY, credentials);
         CloseableHttpClient httpclient = HttpClientBuilder.create().setDefaultCredentialsProvider(provider).build();
-        CloseableHttpResponse response = httpclient.execute(new HttpPost("http://localhost:8080/hfe/open/open.html"));
+        CloseableHttpResponse response = httpclient.execute(new HttpPost("http://localhost:8080/hfe/secure/init.html"));
         //CloseableHttpResponse response = httpclient.execute(new HttpPost("http://localhost:8080/hfe/secure/init.html"));
         Logger.getLogger("Client").info("" + response.getStatusLine());
         Logger.getLogger("Client").info(EntityUtils.toString(response.getEntity()));

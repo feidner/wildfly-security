@@ -1,5 +1,5 @@
 <jboss-web>
-    <!--security-domain>henrik</security-domain-->
+    <security-domain>henrik</security-domain>
     <disable-audit>true</disable-audit>
     <context-root>hfe</context-root>
     <use-jboss-authorization></use-jboss-authorization>

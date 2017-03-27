@@ -44,8 +44,8 @@ import static java.lang.String.format;
 
 public class EmbeddedContainer {
 
-    private static final String DEFAULT_EMBEDDED_DATABASE = "h2-tcp";
-    private static final String DATA_SOURCE_SYSTEM_PROPERTY_KEY = "dataSource";
+    private static final String DEFAULT_DATASOURCE = "h2-tcp";
+    private static final String DATA_SOURCE_SYSTEM_PROPERTY_KEY = "datasource";
     private static final String EMBEDDED_DATABASE_FILENAME_SYSTEM_PROPERTY_KEY = "H2_FILE_NAME";
 
 
@@ -103,7 +103,7 @@ public class EmbeddedContainer {
 
     public static EJBContainer startForUi(Object obj, Set<String> additionalCallers, Set<String> definitly) {
         log.info("Start EjbContainer fuer UI Test");
-        Properties properties = PropertiesProvider.createFromStandalonXmlCheckedIn("h2-mem");
+        Properties properties = PropertiesProvider.createFromStandalonXmlCheckedIn(DEFAULT_DATASOURCE);
 
         properties.put("java:jboss/datasources/StfpDSNonJta.JdbcDriver", "");
         properties.put(DeploymentFilterable.CLASSPATH_INCLUDE, ".*(target/classes|SNAPSHOT).*");
@@ -198,8 +198,7 @@ public class EmbeddedContainer {
                     includes.addAll(INCLUDES);
                     excludes.addAll(EXCLUDES);
                 }
-                Properties properties = PropertiesProvider.createFromStandalonXmlCheckedIn(DEFAULT_EMBEDDED_DATABASE);
-                createFilteredContainer(classToTest, properties , callers, new HashSet<>(), includes, excludes);
+                createFilteredContainer(classToTest, getOpenEjbDataSourceProperties() , callers, new HashSet<>(), includes, excludes);
             }
         } else {
 
@@ -237,7 +236,7 @@ public class EmbeddedContainer {
     private static Properties getOpenEjbDataSourceProperties() {
         Properties properties;
         if (StringUtils.isEmpty(System.getProperty(DATA_SOURCE_SYSTEM_PROPERTY_KEY))) {
-            properties = PropertiesProvider.createFromStandalonXmlCheckedIn(DEFAULT_EMBEDDED_DATABASE);
+            properties = PropertiesProvider.createFromStandalonXmlCheckedIn(DEFAULT_DATASOURCE);
         } else {
             String propertyName = System.getProperty(DATA_SOURCE_SYSTEM_PROPERTY_KEY);
             properties = PropertiesProvider.createFromStandalonXmlCheckedIn(propertyName);

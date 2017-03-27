@@ -5,8 +5,7 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.Environment;
-import org.hibernate.dialect.H2Dialect;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.jdbc.connections.internal.DatasourceConnectionProviderImpl;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
@@ -18,12 +17,23 @@ import java.io.File;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.logging.Logger;
 
 import static java.util.stream.Collectors.toList;
 
 public class HibernateDDLGenerator {
+
+    public static void dropEntityTables(DataSource dataSource, String dialect, URL dir) throws Exception {
+        handleEntityTables(dataSource, dialect, dir, true);
+    }
+
+    public static void createEntityTables(DataSource dataSource, String dialect, URL dir) throws Exception {
+        handleEntityTables(dataSource, dialect, dir, false);
+    }
+
+    // #########################################
 
     private static List<Class<?>> findEntityClasses(URL dir) {
         return FileUtils.listFiles(new File(dir.getPath()), new String[]{"class"}, true).stream()
@@ -51,34 +61,29 @@ public class HibernateDDLGenerator {
         return className;
     }
 
-    private static SchemaExport buildSchemaExport(DataSource dataSource, File intermediateFile, List<Class<?>> allEntityClasses) throws NamingException {
+    private static SchemaExport buildSchemaExport(DataSource dataSource, String dialect, File intermediateFile, List<Class<?>> allEntityClasses) throws NamingException, SQLException {
         ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder()
-            .applySetting(Environment.DIALECT, H2Dialect.class.getCanonicalName())
-            .applySetting(Environment.CONNECTION_PROVIDER , DatasourceConnectionProviderImpl.class.getCanonicalName())
-            .applySetting(Environment.DATASOURCE, dataSource)
+            .applySetting(AvailableSettings.DIALECT, dialect)
+            .applySetting(AvailableSettings.CONNECTION_PROVIDER , DatasourceConnectionProviderImpl.class.getCanonicalName())
+            .applySetting(AvailableSettings.DATASOURCE, dataSource)
+            //.applySetting(AvailableSettings.URL, "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MVCC=TRUE;MV_STORE=TRUE")
+            //.applySetting(AvailableSettings.USER, "sa")
+            //.applySetting(AvailableSettings.PASS, "sa")
+            //.applySetting(AvailableSettings.DRIVER, "org.h2.jdbcx.JdbcDataSource")
             .build();
 
         MetadataSources sources = new MetadataSources(serviceRegistry);
         allEntityClasses.forEach(sources::addAnnotatedClass);
 
         SchemaExport schemaExport = new SchemaExport(new MetadataBuilderImpl(sources).build());
-        schemaExport.setDelimiter(";");
         schemaExport.setFormat(true);
         schemaExport.setOutputFile(intermediateFile == null ? null : intermediateFile.getAbsolutePath());
         return schemaExport;
     }
 
-    public static void dropEntityTables(DataSource dataSource, URL dir) throws Exception {
-        handleEntityTables(dataSource, dir, true);
-    }
-
-    public static void createEntityTables(DataSource dataSource, URL dir) throws Exception {
-        handleEntityTables(dataSource, dir, false);
-    }
-
-    private static void handleEntityTables(DataSource dataSource, URL dir, boolean drop) throws Exception {
+    private static void handleEntityTables(DataSource dataSource, String dialect, URL dir, boolean drop) throws Exception {
         List<Class<?>> allEntityClasses = findEntityClasses(dir);
-        SchemaExport schemaExport = buildSchemaExport(dataSource, null, allEntityClasses);
+        SchemaExport schemaExport = buildSchemaExport(dataSource, dialect, null, allEntityClasses);
         PrintStream stdout = System.out;
         OutputStream stringOut = new ByteArrayOutputStream();
         System.setOut(new PrintStream(stringOut));

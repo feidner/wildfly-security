@@ -3,6 +3,7 @@ package hfe.testing.openejb;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.AbstractFileFilter;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.apache.maven.shared.utils.PropertyUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -48,7 +49,13 @@ class PropertiesSelector {
                     if (button.isSelected()) {
                         frame.setVisible(false);
                         if(selectedProperties != null) {
-                            Properties properties = PropertiesProvider.createFromStandalonXmlCheckedIn(button.file);
+                            Properties result;
+                            try {
+                                result = PropertiesProvider.readDbConnectionProperties(PropertyUtils.loadProperties(button.file));
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                            Properties properties = result;
                             selectedProperties.accept(properties);
                         }
                         if(selectedFile != null) {
