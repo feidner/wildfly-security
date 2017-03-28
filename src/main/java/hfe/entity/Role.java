@@ -3,10 +3,7 @@ package hfe.entity;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
+import javax.persistence.*;
 import java.io.Serializable;
 
 @Entity
@@ -20,9 +17,13 @@ public class Role implements Serializable {
     @Id
     private String roleId;
 
-    public Role(Principal id, String role) {
+    @Column
+    private String roleGroup;
+
+    public Role(Principal id, String role, String roleGroup) {
         this.principalId = id;
         this.roleId = role;
+        this.roleGroup = roleGroup;
     }
 
     public String getRoleId() {
@@ -39,6 +40,14 @@ public class Role implements Serializable {
 
     public void setPrincipalId(Principal principalId) {
         this.principalId = principalId;
+    }
+
+    public void setRoleGroup(String roleGroup) {
+        this.roleGroup = roleGroup;
+    }
+
+    public String getRoleGroup() {
+        return roleGroup;
     }
 
     @Override

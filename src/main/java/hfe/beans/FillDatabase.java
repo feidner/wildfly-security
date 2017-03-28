@@ -19,8 +19,7 @@ public class FillDatabase {
     private EntityManager entitManager;
 
     public void insertData() {
-
-        getEntityManager().persist(new Principal("feidner", createPasswordHash("10Hendi!"), Stream.of(new Role(new Principal("feidner"), "ROLEME")).collect(Collectors.toSet())));
+        getEntityManager().persist(new Principal("feidner", createPasswordHash("10Hendi!"), Stream.of(new Role(new Principal("feidner"), "ROLEME", "Roles")).collect(Collectors.toSet())));
     }
 
     private String createPasswordHash(String password) {
