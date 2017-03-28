@@ -346,7 +346,7 @@
                         <login-module code="Database" flag="sufficient">
                             <module-option name="principalsQuery" value="select password from PRINCIPAL where ID = ?"/>
                             <module-option name="dsJndiName" value="java:jboss/datasources/HfeDS"/>
-                            <module-option name="rolesQuery" value="select roleid, null from ROLE where id = ?"/>
+                            <module-option name="rolesQuery" value="select roleid, rolegroup from ROLE where id = ?"/>
                             <module-option name="hashAlgorithm" value="SHA-256"/>
                             <module-option name="hashEncoding" value="base64"/>
                         </login-module>
@@ -422,10 +422,4 @@
             <remote-destination host="localhost" port="25"/>
         </outbound-socket-binding>
     </socket-binding-group>
-
-    <deployments>
-        <deployment name="hfe_exploded" runtime-name="hfe_exploded.war">
-            <fs-exploded path="C:\a_local\1A_workspaces\Java8\wildfly-security\build\classes\artifacts\hfe_exploded"/>
-        </deployment>
-    </deployments>
 </server>
