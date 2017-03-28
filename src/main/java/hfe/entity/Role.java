@@ -1,6 +1,12 @@
 package hfe.entity;
 
-import javax.persistence.*;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import java.io.Serializable;
 
 @Entity
@@ -33,5 +39,18 @@ public class Role implements Serializable {
 
     public void setPrincipalId(Principal principalId) {
         this.principalId = principalId;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return EqualsBuilder.reflectionEquals(this, obj);
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder()
+                .append(getPrincipalId())
+                .append(getRoleId())
+                .toHashCode();
     }
 }
