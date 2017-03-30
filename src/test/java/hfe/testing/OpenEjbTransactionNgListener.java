@@ -5,18 +5,22 @@ import hfe.testing.openejb.TransactionBean;
 import org.testng.*;
 
 import javax.inject.Inject;
+import java.util.Collections;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class OpenEjbTestNgListener implements IInvokedMethodListener, IHookable {
+public class OpenEjbTransactionNgListener implements IInvokedMethodListener, IHookable {
     @Inject
     private TransactionBean transactionBean;
 
-    public OpenEjbTestNgListener() {
+    public OpenEjbTransactionNgListener() {
 
     }
 
     @Override
     public void beforeInvocation(IInvokedMethod method, ITestResult testResult) {
-        EmbeddedContainer.start(this, testResult.getTestClass().getRealClass());
+        EmbeddedContainer.start(this, testResult.getTestClass().getRealClass(),
+                Stream.of(OpenEjbTransactionNgListener.class.getTypeName(), TransactionBean.class.getTypeName()).collect(Collectors.toSet()), Collections.EMPTY_SET);
         EmbeddedContainer.applyCdiToObject(testResult.getInstance());
     }
 

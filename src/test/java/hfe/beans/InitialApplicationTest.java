@@ -1,7 +1,7 @@
 package hfe.beans;
 
 import hfe.entity.Principal;
-import hfe.testing.OpenEjbTestNgListener;
+import hfe.testing.OpenEjbTransactionNgListener;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
@@ -10,7 +10,7 @@ import javax.persistence.PersistenceContext;
 
 import static org.testng.AssertJUnit.assertNull;
 
-@Listeners(OpenEjbTestNgListener.class)
+@Listeners(OpenEjbTransactionNgListener.class)
 public class InitialApplicationTest {
 
     @PersistenceContext(unitName = "hfe")

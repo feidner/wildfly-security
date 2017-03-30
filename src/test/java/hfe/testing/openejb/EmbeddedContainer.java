@@ -1,6 +1,6 @@
 package hfe.testing.openejb;
 
-import hfe.testing.OpenEjbTestNgListener;
+import hfe.testing.OpenEjbTransactionNgListener;
 import hfe.tools.StackTrace;
 import hfe.tools.StopWatch;
 import org.apache.commons.collections.CollectionUtils;
@@ -13,8 +13,6 @@ import org.apache.openejb.config.ConfigurationFactory;
 import org.apache.openejb.config.DeploymentFilterable;
 import org.apache.openejb.config.FinderFactory;
 import org.apache.openejb.loader.SystemInstance;
-import org.apache.xbean.finder.AnnotationFinder;
-import org.apache.xbean.finder.archive.ClasspathArchive;
 import org.apache.xbean.finder.filter.Filter;
 import org.apache.xbean.finder.filter.Filters;
 import org.apache.xbean.finder.filter.IncludeExcludeFilter;
@@ -23,13 +21,14 @@ import org.testng.annotations.Listeners;
 
 import javax.ejb.embeddable.EJBContainer;
 import javax.enterprise.inject.Instance;
+import javax.naming.NameClassPair;
+import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
-import java.net.MalformedURLException;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -45,18 +44,19 @@ import static java.lang.String.format;
 public class EmbeddedContainer {
 
     private static final String DEFAULT_DATASOURCE = "h2-tcp";
+    private static final String DEFAULT_MAIN_PROGRAM_DATASOURCE = "h2-tcp";
     private static final String DATA_SOURCE_SYSTEM_PROPERTY_KEY = "datasource";
     private static final String EMBEDDED_DATABASE_FILENAME_SYSTEM_PROPERTY_KEY = "H2_FILE_NAME";
 
 
-    private static final Set<String> EXCLUDES = Stream.of(
+    private static final Set<String> EXCLUDES = Collections.unmodifiableSet(Stream.of(
             ".*(Test|Mock)",
             ".*\\${1}.*"
-    ).collect(Collectors.toSet());
+    ).collect(Collectors.toSet()));
 
     private final static Set<Class<?>> PRIMITIVE_TYPES = Stream.of(String.class, java.util.Date.class, BigDecimal.class, char.class, byte.class, int.class, short.class, long.class, boolean.class).collect(Collectors.toSet());
 
-    private static final Set<String> INCLUDES = Stream.of("hfe.(beans).*").collect(Collectors.toSet());
+    private static final Set<String> INCLUDES = Collections.unmodifiableSet(Stream.of("hfe.(beans).*").collect(Collectors.toSet()));
 
     private static final Set<String> UI_EXCLUDES = Stream.of(
             ".*\\${1}.*"
@@ -93,68 +93,84 @@ public class EmbeddedContainer {
         log.info(format("Accept %s: %s", s6, filter.accept(s6)));
     }
 
-    public static void start(Object obj) {
-        start(obj, (Runnable) null);
-    }
 
     public static EJBContainer startForUi(Object obj, Set<String> definitly) {
-        return startForUi(obj, new HashSet<>(), definitly);
-    }
-
-    public static EJBContainer startForUi(Object obj, Set<String> additionalCallers, Set<String> definitly) {
         log.info("Start EjbContainer fuer UI Test");
         Properties properties = PropertiesProvider.createFromStandalonXmlCheckedIn(DEFAULT_DATASOURCE);
-
-        properties.put("java:jboss/datasources/StfpDSNonJta.JdbcDriver", "");
         properties.put(DeploymentFilterable.CLASSPATH_INCLUDE, ".*(target/classes|SNAPSHOT).*");
         properties.put(DeploymentFilterable.CLASSPATH_EXCLUDE, "((.(?!SNAPSHOT))*|.*tests)\\.jar");
-
-        additionalCallers.add(obj.getClass().getCanonicalName());
-
-        createFilteredContainer(obj.getClass(), properties, additionalCallers, definitly, UI_INCLUDES, UI_EXCLUDES);
+        createFilteredContainer(obj.getClass(), properties, new HashSet<>(), definitly, UI_INCLUDES, UI_EXCLUDES);
         applyCdiToObject(obj);
         return container;
     }
 
-    public static void start(Object obj, Runnable runThisInContainer) {
-        start(obj, SchemaGuard.CANCEL_PROCESS, runThisInContainer);
-    }
-
-    public static void start(Object obj, SchemaGuard schemaGuard) {
-        start(obj, schemaGuard, null);
-    }
-
-    public static void start(Object obj, SchemaGuard schemaGuard, Runnable runThisInContainer) {
-        ensureEjbContainerExists(obj, obj.getClass(), schemaGuard, runThisInContainer);
-        if (runThisInContainer == null) {
-            applyCdiToObject(obj);
+    public static void startMain(Object obj, Runnable runThisInContainer) {
+        log.info("Start EjbContainer fuer MainProgramm");
+        String dataSourceViaSystemProperty = System.getProperty(DATA_SOURCE_SYSTEM_PROPERTY_KEY);
+        String embeddedDatabaseFilenameViaSystemProperties = System.getProperty(EMBEDDED_DATABASE_FILENAME_SYSTEM_PROPERTY_KEY);
+        Class<?> classToTest = obj.getClass();
+        if (runThisInContainer == null || dataSourceViaSystemProperty != null || embeddedDatabaseFilenameViaSystemProperties != null) {
+            if("".equals(embeddedDatabaseFilenameViaSystemProperties)) {
+                PropertiesSelector.readH2Name(embeddedDatabaseFilenameViaUser -> createAndApplyContainer(PropertiesProvider.createFromStandalonXmlCheckedIn(DEFAULT_MAIN_PROGRAM_DATASOURCE, embeddedDatabaseFilenameViaUser), obj, classToTest, runThisInContainer));
+            } else {
+                String name = dataSourceViaSystemProperty == null ? DEFAULT_MAIN_PROGRAM_DATASOURCE : dataSourceViaSystemProperty;
+                Properties fromStandaloneProperties = PropertiesProvider.createFromStandalonXmlCheckedIn(name, System.getProperty(EMBEDDED_DATABASE_FILENAME_SYSTEM_PROPERTY_KEY));
+                createAndApplyContainer(fromStandaloneProperties, obj, classToTest, runThisInContainer);
+            }
+        } else {
+            PropertiesSelector.runWithSelectedProperties(properties -> createAndApplyContainer(properties, obj, classToTest, runThisInContainer), null);
         }
     }
 
-    public static void start(Object obj, Class<?> testClass) {
-        ensureEjbContainerExists(obj, testClass, SchemaGuard.CANCEL_PROCESS, null);
+    public static void start(Object obj, Class<?> testClass, Set<String> callers, Set<String> excludes) {
+        ensureEjbContainerExists(testClass, SchemaGuard.CANCEL_PROCESS, callers, excludes);
         applyCdiToObject(obj);
     }
 
-    private static void ensureEjbContainerExists(Object obj, Class<?> classToTest, SchemaGuard schemaGuard, Runnable runThisInContainer) {
+    public static <T> T applyCdiToObject(T obj) {
+        try {
+            container.getContext().bind("inject", obj);
+            return obj;
+        } catch (NamingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void closeContainer() {
+        if (container != null) {
+            container.close();
+            container = null;
+        }
+    }
+
+    public static <T> Set<Class<T>> collectContextClasses(String regex) throws NamingException, ClassNotFoundException {
+        Set<Class<T>> classes = new HashSet<>();
+        NamingEnumeration<NameClassPair> enumeration = null;
+        try {
+            enumeration = container.getContext().list("java:global/backend");
+        } catch (NamingException e) {
+            enumeration = container.getContext().list("java:global/backend-1.2.0-SNAPSHOT");
+        }
+        while (enumeration.hasMoreElements()) {
+            NameClassPair pair = enumeration.next();
+            if (pair.getName().matches(regex)) {
+                @SuppressWarnings("unchecked") Class<T> clazz = (Class<T>) Class.forName(pair.getName().substring(pair.getName().indexOf("!") + 1));
+                //Object obj = container.getContext().lookup("java:global/backend/" + pair.getName());
+                classes.add(clazz);
+            }
+        }
+        return classes;
+    }
+
+    // ######################## PRIVATES #####################
+
+    private static void ensureEjbContainerExists(Class<?> classToTest, SchemaGuard schemaGuard, Set<String> callers, Set<String> excludes) {
 
         if (container != null) {
             return;
         }
-
         String currentStacktrace = StackTrace.current();
-
-        Set<String> callers = new HashSet<>();
-
-        /*
-         * hfe: Callers werden als ManagedBeans dem EjbContainer hinzugefuegt.
-         * Der aktuelle Test muss als Caller hinzugefuegt werden, somit koennen die CDI-Annotationen aufgeloest werden.
-         * Darueber hinaus muessen die TestRunner, die CDI nutzen auch als Caller hinzugefuegt werden.
-         */
-        callers.add(classToTest.getCanonicalName());
-        callers.add(OpenEjbTestNgListener.class.getCanonicalName());
-
-        boolean isIntellijJunitStarter = false, isIntellijJunitGroupStarter = false;
+        boolean isIntellijJunitStarter, isIntellijJunitGroupStarter = false;
         if(StackTrace.currentMatches(".*org\\.junit", currentStacktrace)) {
             isIntellijJunitStarter = StackTrace.currentMatches(".*com\\.intellij\\.rt\\.execution\\.junit\\.JUnitStarter.*", currentStacktrace);
             isIntellijJunitGroupStarter = StackTrace.currentMatches(".*com\\.intellij\\.junit4\\.JUnit4TestRunnerUtil\\.buildRequest.*", currentStacktrace) ||
@@ -165,56 +181,17 @@ public class EmbeddedContainer {
             throw new RuntimeException("Testframework ist nicht bekannt!");
         }
 
-        boolean isMainProgram = StackTrace.currentMatches(".*hfe\\..*main\\(.*", currentStacktrace);
-        log.info(format("Test: %s, isIntellijJunitStarter: %s, isIntellijJunitGroupStarter: %s, isMainProgram: %s",
-                classToTest.getSimpleName(), isIntellijJunitStarter, isIntellijJunitGroupStarter, isMainProgram));
+        log.info(format("Test: %s, isIntellijJunitStarter: %s, isIntellijJunitGroupStarter: %s",
+                classToTest.getSimpleName(), isIntellijJunitStarter, isIntellijJunitGroupStarter));
 
-        if (!isIntellijJunitGroupStarter && (isIntellijJunitStarter || isMainProgram)) {
-            /*
-             * Es wurde ein Test aus Intellij gestartet oder ein Programm ueber eine main-Methode
-             */
-            if (isMainProgram) {
-                String dataSourceViaSystemProperty = System.getProperty(DATA_SOURCE_SYSTEM_PROPERTY_KEY);
-                String embeddedDatabaseFilenameViaSystemProperties = System.getProperty(EMBEDDED_DATABASE_FILENAME_SYSTEM_PROPERTY_KEY);
-                if (runThisInContainer == null || dataSourceViaSystemProperty != null || embeddedDatabaseFilenameViaSystemProperties != null) {
-                    if("".equals(embeddedDatabaseFilenameViaSystemProperties)) {
-                        PropertiesSelector.readH2Name(embeddedDatabaseFilenameViaUser -> createAndApplyContainer(PropertiesProvider.createFromStandalonXmlCheckedIn("h2-tcp", embeddedDatabaseFilenameViaUser), obj, classToTest, callers, runThisInContainer));
-                    } else {
-                        String name = dataSourceViaSystemProperty == null ? "h2-tcp" : dataSourceViaSystemProperty;
-                        createAndApplyContainer(PropertiesProvider.createFromStandalonXmlCheckedIn(name, System.getProperty(EMBEDDED_DATABASE_FILENAME_SYSTEM_PROPERTY_KEY)), obj, classToTest, callers, runThisInContainer);
-                    }
-                } else {
-                    PropertiesSelector.runWithSelectedProperties(properties -> createAndApplyContainer(properties, obj, classToTest, callers, runThisInContainer), null);
-                }
-            } else {
-                Set<String> includes = new HashSet<>();
-                Set<String> excludes = new HashSet<>();
-                // hfe: Hier bin ich mir nicht sicher ob man alle Instanzen in rekursiven Feldern betrachten soll?
-                boolean hasInstanceField = allNonStaticFields(classToTest).stream().anyMatch(f -> f.getType() == Instance.class);
-                if (hasInstanceField) {
-                    includes.add(".*");
-                    excludes.addAll(EXCLUDES);
-                } else {
-                    includes.addAll(INCLUDES);
-                    excludes.addAll(EXCLUDES);
-                }
-                createFilteredContainer(classToTest, getOpenEjbDataSourceProperties() , callers, new HashSet<>(), includes, excludes);
-            }
+        if (!isIntellijJunitGroupStarter && isIntellijJunitStarter) {
+            createFilteredContainer(classToTest, getOpenEjbDataSourceProperties(), callers,
+                    new HashSet<>(), INCLUDES, CollectionUtils.union(excludes, EXCLUDES));
         } else {
-
-            ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-            File testClassPath = getTestClassPath(classLoader);
-            Set<String> annotatedTests = getAnnotatedTests(testClassPath, classLoader);
-            if (annotatedTests.contains(classToTest.getCanonicalName())) {
-                callers.remove(classToTest.getCanonicalName());
-                log.info(format("### ClasstoTest(%s) contained in Annotated-Tests", classToTest.getCanonicalName()));
-            }
-
+            File testClassPath = getTestClassPath(Thread.currentThread().getContextClassLoader());
             Set<String> testsNeedEjbContainer = getTestsNeedEjbContainer(testClassPath);
-            @SuppressWarnings("unchecked") Collection<String> testsNeededEjbContainerSkipAnnotatedTests = CollectionUtils.subtract(testsNeedEjbContainer, annotatedTests);
-            log.info(format("### Tests not annotated but need Ejb-Container: %s", testsNeededEjbContainerSkipAnnotatedTests));
-
-            callers.addAll(testsNeededEjbContainerSkipAnnotatedTests);
+            log.info(format("### Tests not annotated but need Ejb-Container: %s", testsNeedEjbContainer));
+            callers.addAll(testsNeedEjbContainer);
 
             Properties dataSourceProperties = manageDataSourceProperties(getOpenEjbDataSourceProperties(), callers);
 
@@ -226,10 +203,16 @@ public class EmbeddedContainer {
         }
     }
 
+    private static boolean classToTestHasInstanceFields(Class<?> classToTest) {
+        // hfe: Hier bin ich mir nicht sicher ob man alle Instanzen in rekursiven Feldern betrachten soll?
+        return allNonStaticFields(classToTest).stream().anyMatch(f -> f.getType() == Instance.class);
+    }
+
     private static Properties manageDataSourceProperties(Properties dataSourceProperties, Set<String> callers) {
         dataSourceProperties.put(DeploymentFilterable.CLASSPATH_FILTER_DESCRIPTORS, Boolean.TRUE.toString());
-        dataSourceProperties.put(FinderFactory.class.getCanonicalName(), HfeFinderFactory.class.getCanonicalName());
+        dataSourceProperties.put(FinderFactory.class.getTypeName(), HfeFinderFactory.class.getTypeName());
         dataSourceProperties.put(OpenEjbContainer.Provider.OPENEJB_ADDITIONNAL_CALLERS_KEY, StringUtils.join(callers, ","));
+        dataSourceProperties.put("xbean.finder.use.get-resources", Boolean.TRUE.toString());
         return dataSourceProperties;
     }
 
@@ -246,13 +229,34 @@ public class EmbeddedContainer {
         return properties;
     }
 
-    private static void createFilteredContainer(Class<?> classToTest, Properties dataSourceProperties, Set<String> callers, Set<String> definitly, Set<String> includes, Set<String> excludes) {
-        Map<Class<?>, Set<Field>> allAnnotations = findEjbs(classToTest);
+    private static boolean isTestClass(Field f) {
+        if(f.getType().getSimpleName().endsWith("Test")) {
+            return true;
+        }
+        Class<?> clazz = f.getType().getEnclosingClass();
+        while(clazz != null) {
+            if(clazz.getSimpleName().endsWith("Test")) {
+                return true;
+            }
+            clazz = clazz.getEnclosingClass();
+        }
+        return false;
+    }
+
+    private static void createFilteredContainer(Class<?> classToTest, Properties dataSourceProperties, Set<String> callers, Set<String> definitly, Set<String> includes, Collection<String> excludes) {
+
+        if(!callers.contains(classToTest.getTypeName())) {
+            callers.add(classToTest.getTypeName());
+        }
+
+        includes = classToTestHasInstanceFields(classToTest) ? Stream.of(".*").collect(Collectors.toSet()) : includes;
+
+        Map<Class<?>, Set<Field>> allAnnotations = findCDIs(classToTest);
         Set<Field> ejbAnnotated = allAnnotations.get(javax.ejb.EJB.class);
         if (!ejbAnnotated.isEmpty()) {
             definitly.add(cdiIncudes(ejbAnnotated));
-            //ejbAnnotated.stream().filter(f -> f.getType() != TransactionBean.class).forEach(f -> callers.add(f.getType().getCanonicalName()));
-            ejbAnnotated.forEach(f -> callers.add(f.getType().getCanonicalName()));
+            // die ejb annotated klassen den callers hinzufuegen
+            ejbAnnotated.forEach(f -> callers.add(f.getType().getTypeName()));
         }
 
         log.info(format("### Callers: %s", callers));
@@ -260,6 +264,9 @@ public class EmbeddedContainer {
         Set<Field> injectAnnotated = allAnnotations.get(javax.inject.Inject.class);
         if (!injectAnnotated.isEmpty()) {
             definitly.add(cdiIncudes(injectAnnotated));
+            injectAnnotated.stream().
+                    filter(f -> isTestClass(f)).
+                    forEach(f -> callers.add(f.getType().getTypeName()));
         }
 
         HfeFinderFactory.replaceScan(includes, definitly, excludes);
@@ -273,21 +280,21 @@ public class EmbeddedContainer {
         return FieldUtils.getAllFieldsList(clazz).stream().filter(field -> !Modifier.isStatic(field.getModifiers())).collect(Collectors.toList());
     }
 
-    private static Map<Class<?>, Set<Field>> findEjbs(Class<?> toTest) {
+    private static Map<Class<?>, Set<Field>> findCDIs(Class<?> toTest) {
         Map<Class<?>, Set<Field>> annotatetdClasses = new HashMap<>();
         annotatetdClasses.put(javax.ejb.EJB.class, new HashSet<>());
         annotatetdClasses.put(javax.inject.Inject.class, new HashSet<>());
         List<Field> allNonStaticFields = allNonStaticFields(toTest);
-        findEjbs(annotatetdClasses, allNonStaticFields, new HashSet<>());
+        findCDIs(annotatetdClasses, allNonStaticFields, new HashSet<>());
         return annotatetdClasses;
     }
 
-    private static void findEjbs(Map<Class<?>, Set<Field>> result, List<Field> injectAnnotated, Set<Class<?>> alreadyAnalyzed) {
+    private static void findCDIs(Map<Class<?>, Set<Field>> result, List<Field> injectAnnotated, Set<Class<?>> alreadyAnalyzed) {
         injectAnnotated.forEach(field -> {
             Class<?> fieldClass = field.getType();
             if (!PRIMITIVE_TYPES.contains(fieldClass)) {
                 try {
-                    Class<?> clazz = Class.forName(fieldClass.getCanonicalName());
+                    Class<?> clazz = Class.forName(fieldClass.getTypeName());
                     alreadyAnalyzed.add(clazz);
 
                     if (field.isAnnotationPresent(javax.ejb.EJB.class)) {
@@ -301,13 +308,13 @@ public class EmbeddedContainer {
                     List<Field> ejbFields = allFields.stream().filter(f -> !alreadyAnalyzed.contains(f.getType()) &&
                             f.isAnnotationPresent(javax.ejb.EJB.class)).collect(Collectors.toList());
                     if (!ejbFields.isEmpty()) {
-                        findEjbs(result, ejbFields, alreadyAnalyzed);
+                        findCDIs(result, ejbFields, alreadyAnalyzed);
                         result.get(javax.ejb.EJB.class).addAll(ejbFields);
                     }
                     List<Field> injectFields = allFields.stream().filter(f -> !alreadyAnalyzed.contains(f.getType()) &&
                             f.isAnnotationPresent(javax.inject.Inject.class)).collect(Collectors.toList());
                     if (!injectFields.isEmpty()) {
-                        findEjbs(result, injectFields, alreadyAnalyzed);
+                        findCDIs(result, injectFields, alreadyAnalyzed);
                         result.get(javax.inject.Inject.class).addAll(injectFields);
                     }
                 } catch (ClassNotFoundException e) {
@@ -338,7 +345,7 @@ public class EmbeddedContainer {
     }
 
 
-    private static void createAndApplyContainer(Properties properties, Object obj, Class<?> classToTest, Set<String> callers, Runnable runThisInContainer) {
+    private static void createAndApplyContainer(Properties properties, Object obj, Class<?> classToTest, Runnable runThisInContainer) {
         startH2(properties);
         try {
             Set<String> includes = Stream.of(".*").collect(Collectors.toSet());
@@ -346,7 +353,7 @@ public class EmbeddedContainer {
             for (Object key : properties.keySet()) {
                 log.fine(format("## %s = %s", key, properties.get(key)));
             }
-            createFilteredContainer(classToTest, properties, callers, new HashSet<>(), includes, excludes);
+            createFilteredContainer(classToTest, properties, new HashSet<>(), new HashSet<>(), includes, excludes);
             applyCdiToObject(obj);
             if (runThisInContainer != null) {
                 runThisInContainer.run();
@@ -374,18 +381,6 @@ public class EmbeddedContainer {
         File testClassPath = modules.get(0);
         log.info(format("### TestClassPath: %s", testClassPath.getAbsolutePath()));
         return testClassPath;
-    }
-
-    private static Set<String> getAnnotatedTests(File testClassPath, ClassLoader classLoader) {
-        StopWatch st = StopWatch.createAndStart();
-        try {
-            AnnotationFinder finder = new AnnotationFinder(ClasspathArchive.archive(classLoader, testClassPath.toURI().toURL()));
-            Set<String> annotatedTests = finder.findAnnotatedClasses(javax.annotation.ManagedBean.class).stream().map(Class::getCanonicalName).collect(Collectors.toSet());
-            log.info(format("### AnnotationFinder for Tests = %s", st.stop()));
-            return annotatedTests;
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static Set<String> getClassesMatches(File classPath, String regex) {
@@ -433,7 +428,7 @@ public class EmbeddedContainer {
                     if (cl.isAnnotationPresent(Listeners.class)) {
                         Listeners anno = cl.getAnnotation(Listeners.class);
                         Class<? extends ITestNGListener>[] val = anno.value();
-                        if (val.length == 1 && val[0] == OpenEjbTestNgListener.class) {
+                        if (val.length == 1 && val[0] == OpenEjbTransactionNgListener.class) {
                             return true;
                         }
                     }
@@ -461,13 +456,23 @@ public class EmbeddedContainer {
         //System.setProperty(AvailableSettings.SCANNER, StfpHibernateScanner.class.getCanonicalName());
 
         if (!dataSourceProperties.containsKey(DeploymentFilterable.CLASSPATH_INCLUDE)) {
-            dataSourceProperties.put(DeploymentFilterable.CLASSPATH_INCLUDE, ".*classes.*");
+            dataSourceProperties.put(DeploymentFilterable.CLASSPATH_INCLUDE, ".*classes/main.*");
         }
         if (!dataSourceProperties.containsKey(DeploymentFilterable.CLASSPATH_EXCLUDE)) {
             dataSourceProperties.put(DeploymentFilterable.CLASSPATH_EXCLUDE, ".*jar");
         }
 
         try {
+            /*
+            log.info("### StfpDS.JdbcUrl: " + getDataSourceProperty(dataSourceProperties, DatasourceName.Stfp, "JdbcUrl"));
+            log.info("### StfpDS.Username: " + getDataSourceProperty(dataSourceProperties, DatasourceName.Stfp, "Username"));
+
+            log.info("### GreatDS.JdbcUrl: " + getDataSourceProperty(dataSourceProperties, DatasourceName.Great, "JdbcUrl"));
+            log.info("### GreatDS.Username: " + getDataSourceProperty(dataSourceProperties, DatasourceName.Great, "Username"));
+
+            log.info("### TradeFinance.JdbcUrl: " + getDataSourceProperty(dataSourceProperties, DatasourceName.TradeFinance, "JdbcUrl"));
+            log.info("### TradeFinance.Username: " + getDataSourceProperty(dataSourceProperties, DatasourceName.TradeFinance, "Username"));
+            */
 
             StopWatch watch = StopWatch.createAndStart();
             EJBContainer ejbContainer = EJBContainer.createEJBContainer(dataSourceProperties);
@@ -514,22 +519,6 @@ public class EmbeddedContainer {
         if(h2Server != null) {
             h2Server.shutdown();
             h2Server.stop();
-        }
-    }
-
-    public static <T> T applyCdiToObject(T obj) {
-        try {
-            container.getContext().bind("inject", obj);
-            return obj;
-        } catch (NamingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static void closeContainer() {
-        if (container != null) {
-            container.close();
-            container = null;
         }
     }
 

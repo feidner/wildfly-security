@@ -2,7 +2,7 @@ package hfe.beans;
 
 import hfe.entity.Principal;
 import hfe.entity.Role;
-import hfe.testing.OpenEjbTestNgListener;
+import hfe.testing.OpenEjbTransactionNgListener;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Listeners(OpenEjbTestNgListener.class)
+@Listeners(OpenEjbTransactionNgListener.class)
 public class FillDatabaseTest {
 
     @PersistenceContext(unitName = "hfe")

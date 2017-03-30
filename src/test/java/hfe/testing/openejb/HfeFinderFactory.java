@@ -27,14 +27,11 @@ import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.net.URL;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-class HfeFinderFactory extends FinderFactory {
+public class HfeFinderFactory extends FinderFactory {
     private static final String FINDER_XML = "FINDER_XML";
     private StopWatch watch = StopWatch.createAndStart();
     private Filter filter;
@@ -73,11 +70,11 @@ class HfeFinderFactory extends FinderFactory {
         return finder;
     }
 
-    private static String instaString(Set<String> strings, String toReplace) {
+    private static String instaString(Collection<String> strings, String toReplace) {
         return StringUtils.join(strings.stream().map(s -> String.format(toReplace, s)).collect(Collectors.toSet()), "\n");
     }
 
-    public static void replaceScan(Set<String> includes, Set<String> defintitlyIncludes, Set<String> excludes) {
+    public static void replaceScan(Collection<String> includes, Collection<String> defintitlyIncludes, Collection<String> excludes) {
         String includeString = instaString(includes, "<include>%s</include>");
         String definitlyIncludeString = instaString(defintitlyIncludes, "<definitlyInclude>%s</definitlyInclude>");
         String excludeString = instaString(excludes, "<exclude>%s</exclude>");

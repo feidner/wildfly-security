@@ -27,7 +27,7 @@ class PropertiesProvider {
     static final String EMBEDDED_H2 = "embedded.h2";
 
     private static final String DB_DRIVER_CLASS_PARAMETER = "ds.db.driver.class";
-    private static final String STANDALONE_PATH = "/db-properties/standalone.xml";
+    private static final String STANDALONE_PATH = "/wildfly-config/standalone.xml";
 
     private static final Function<String, File> FILE_SUPPLIER = name ->
             Stream.of( name, "__" + name).

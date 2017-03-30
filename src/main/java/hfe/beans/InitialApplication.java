@@ -31,9 +31,8 @@ import java.util.stream.Stream;
 
 @Startup
 @Singleton
-//@Transactional(REQUIRES_NEW)
 @TransactionManagement(TransactionManagementType.BEAN)
-public class InitialApplication{
+public class InitialApplication {
 
     private static final Map<String, String> PUBLIC_SCHEMA_NAMES;
     private static final Map<String, Set<Function<String, String>>> DROPP_ALL_STATEMENTS_TO_DATABASES;
