@@ -20,6 +20,10 @@ public class Role implements Serializable {
     @Column
     private String roleGroup;
 
+    public Role() {
+
+    }
+
     public Role(Principal id, String role, String roleGroup) {
         this.principalId = id;
         this.roleId = role;

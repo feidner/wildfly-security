@@ -19,8 +19,9 @@ public class OpenEjbTransactionNgListener implements IInvokedMethodListener, IHo
 
     @Override
     public void beforeInvocation(IInvokedMethod method, ITestResult testResult) {
-        EmbeddedContainer.start(this, testResult.getTestClass().getRealClass(),
-                Stream.of(OpenEjbTransactionNgListener.class.getTypeName(), TransactionBean.class.getTypeName()).collect(Collectors.toSet()), Collections.EMPTY_SET);
+        EmbeddedContainer.start(this, testResult.getTestClass().getRealClass(), NgTestUtils.isSingleMethodTest(testResult),
+                Stream.of(OpenEjbTransactionNgListener.class.getTypeName(), TransactionBean.class.getTypeName()).collect(Collectors.toSet()),
+                Collections.EMPTY_SET);
         EmbeddedContainer.applyCdiToObject(testResult.getInstance());
     }
 

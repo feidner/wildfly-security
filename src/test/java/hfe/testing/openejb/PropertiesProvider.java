@@ -95,11 +95,15 @@ class PropertiesProvider {
             jndiValue = String.format("new://Resource?type=DataSource&aliases=%s&JtaManaged=%s", alias, true);
         }
         String driverClass = dbFileProperties.getProperty(dsName + "." + DB_DRIVER_CLASS_PARAMETER);
-        if(StringUtils.isEmpty(driverClass)) {
+        if (StringUtils.isEmpty(driverClass)) {
             String dd = getValue(element, "driver", true);
             driverClass = drivers.get(dbFileProperties.getProperty(dd));
         }
         properties.put(jndiName, jndiValue);
+        return addValues(properties, dbFileProperties, jndiName, driverClass, element);
+    }
+
+    private static Properties addValues(Properties properties, Properties dbFileProperties, String jndiName, String driverClass, Element element) {
         properties.put(jndiName + ".JdbcDriver", driverClass);
         properties.put(jndiName + ".JdbcUrl", dbFileProperties.getProperty(getValue(element, "connection-url", true)));
         properties.put(jndiName + ".Username", dbFileProperties.getProperty(getValue(element, "user-name", true)));

@@ -5,7 +5,7 @@ import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
 import javax.annotation.security.RunAs;
-import javax.ejb.Stateless;
+import javax.ejb.EJBAccessException;
 import javax.inject.Inject;
 import java.util.concurrent.Callable;
 
@@ -16,16 +16,20 @@ public class DoSomethingTest {
     private DoSomething doSomething;
 
     @Inject
-    private RoleMeExecuter roleMeExecuter;
+    private RoleMeExecuterTest roleMeExecuterTest;
 
     @Test
-    public void hastShowRights() throws Exception {
-        roleMeExecuter.call(() -> doSomething.show());
+    public void hasShowRights() throws Exception {
+        roleMeExecuterTest.call(() -> doSomething.show());
     }
 
-    @Stateless
+    @Test(expectedExceptions = {EJBAccessException.class})
+    public void noRights() {
+        doSomething.show();
+    }
+
     @RunAs("ROLEME")
-    public static class RoleMeExecuter {
+    public static class RoleMeExecuterTest {
         public <V> V call(Callable<V> callable) throws Exception {
             return callable.call();
         }

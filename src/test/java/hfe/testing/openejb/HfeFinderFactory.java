@@ -20,12 +20,13 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import javax.ejb.Singleton;
+import javax.ejb.Startup;
 import javax.xml.parsers.SAXParser;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.*;
 import java.util.logging.Logger;
@@ -57,9 +58,7 @@ public class HfeFinderFactory extends FinderFactory {
 
             Logger.getLogger(HfeFinderFactory.class.getSimpleName()).info(String.format("### %s: %s hat gebraucht %s, jar: %s", ((Module) module).getUniqueId(),
                     annotationFinder.getClass().getSimpleName(), watch.stop(), module.getJarLocation()));
-            if (!annotationFinder.foundSomething()) { // test case too, should be removed in absolute. Next else should be hit but if jar location was set we are here.
-                //throw Reject.developmentError("Das macht keinen Sinn, es muss was gefunden werden!");
-            }
+
             annotationFinder.link();
             finder = annotationFinder;
         } else {
@@ -111,9 +110,14 @@ public class HfeFinderFactory extends FinderFactory {
         }
 
         @Override
-        public List<Annotated<Field>> findMetaAnnotatedFields(Class<? extends Annotation> annotation) {
-            List<Annotated<Field>> fields = super.findMetaAnnotatedFields(annotation);
-            return fields;
+        public List<Annotated<Class<?>>> findMetaAnnotatedClasses(Class<? extends Annotation> annotation) {
+            if(annotation == Singleton.class) {
+                List<Annotated<Class<?>>> classes = super.findMetaAnnotatedClasses(annotation);
+                Set<Annotated<Class<?>>> classesWithStartupAnnotation = classes.stream().filter(clazz -> clazz.isAnnotationPresent(Startup.class)).collect(Collectors.toSet());
+                //classes.removeAll(classesWithStartupAnnotation);
+                return classes;
+            }
+            return super.findMetaAnnotatedClasses(annotation);
         }
 
         @Override
