@@ -5,10 +5,12 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.internal.MetadataBuilderImpl;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.jdbc.connections.internal.DatasourceConnectionProviderImpl;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
+import org.hibernate.tool.schema.TargetType;
 
 import javax.naming.NamingException;
 import javax.persistence.Entity;
@@ -18,6 +20,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URL;
 import java.sql.SQLException;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -61,36 +64,39 @@ public class HibernateDDLGenerator {
         return className;
     }
 
-    private static SchemaExport buildSchemaExport(DataSource dataSource, String dialect, File intermediateFile, List<Class<?>> allEntityClasses) throws NamingException, SQLException {
-        ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder()
-            .applySetting(AvailableSettings.DIALECT, dialect)
-            .applySetting(AvailableSettings.CONNECTION_PROVIDER , DatasourceConnectionProviderImpl.class.getCanonicalName())
-            .applySetting(AvailableSettings.DATASOURCE, dataSource)
-            //.applySetting(AvailableSettings.URL, "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MVCC=TRUE;MV_STORE=TRUE")
-            //.applySetting(AvailableSettings.USER, "sa")
-            //.applySetting(AvailableSettings.PASS, "sa")
-            //.applySetting(AvailableSettings.DRIVER, "org.h2.jdbcx.JdbcDataSource")
-            .build();
-
-        MetadataSources sources = new MetadataSources(serviceRegistry);
-        allEntityClasses.forEach(sources::addAnnotatedClass);
-
-        SchemaExport schemaExport = new SchemaExport(new MetadataBuilderImpl(sources).build());
+    private static SchemaExport buildSchemaExport(File intermediateFile) throws NamingException, SQLException {
+        SchemaExport schemaExport = new SchemaExport();
         schemaExport.setFormat(true);
         schemaExport.setOutputFile(intermediateFile == null ? null : intermediateFile.getAbsolutePath());
         return schemaExport;
     }
 
     private static void handleEntityTables(DataSource dataSource, String dialect, URL dir, boolean drop) throws Exception {
+
+        ServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder()
+                .applySetting(AvailableSettings.DIALECT, dialect)
+                .applySetting(AvailableSettings.CONNECTION_PROVIDER , DatasourceConnectionProviderImpl.class.getCanonicalName())
+                .applySetting(AvailableSettings.DATASOURCE, dataSource)
+                //.applySetting(AvailableSettings.URL, "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MVCC=TRUE;MV_STORE=TRUE")
+                //.applySetting(AvailableSettings.USER, "sa")
+                //.applySetting(AvailableSettings.PASS, "sa")
+                //.applySetting(AvailableSettings.DRIVER, "org.h2.jdbcx.JdbcDataSource")
+                .build();
+
         List<Class<?>> allEntityClasses = findEntityClasses(dir);
-        SchemaExport schemaExport = buildSchemaExport(dataSource, dialect, null, allEntityClasses);
+        MetadataSources sources = new MetadataSources(serviceRegistry);
+        allEntityClasses.forEach(sources::addAnnotatedClass);
+        MetadataImplementor metadataImplementor =new MetadataBuilderImpl(sources).build();
+
+        SchemaExport schemaExport = new SchemaExport();
         PrintStream stdout = System.out;
         OutputStream stringOut = new ByteArrayOutputStream();
         System.setOut(new PrintStream(stringOut));
         if(drop) {
-            schemaExport.execute(true, true, true, false);
+            schemaExport.execute(EnumSet.of(TargetType.DATABASE, TargetType.STDOUT), SchemaExport.Action.DROP, metadataImplementor, serviceRegistry);
+            //schemaExport.execute(true, true, true, false);
         } else {
-            schemaExport.execute(true, true, false, true);
+            schemaExport.execute(EnumSet.of(TargetType.DATABASE, TargetType.STDOUT), SchemaExport.Action.CREATE, metadataImplementor, serviceRegistry);
         }
         System.setOut(stdout);
         Logger.getLogger(HibernateDDLGenerator.class.getSimpleName()).info(stringOut.toString());

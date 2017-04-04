@@ -1,7 +1,7 @@
 package hfe.testing;
 
 import hfe.testing.openejb.EmbeddedContainer;
-import hfe.testing.openejb.TransactionBean;
+import hfe.beans.TransactionBean;
 import org.testng.*;
 
 import javax.inject.Inject;

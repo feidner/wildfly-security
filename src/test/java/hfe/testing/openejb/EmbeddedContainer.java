@@ -12,10 +12,12 @@ import org.apache.openejb.OpenEjbContainer;
 import org.apache.openejb.config.ConfigurationFactory;
 import org.apache.openejb.config.DeploymentFilterable;
 import org.apache.openejb.config.FinderFactory;
+import org.apache.openejb.core.TempClassLoader;
 import org.apache.openejb.loader.SystemInstance;
 import org.apache.xbean.finder.filter.Filter;
 import org.apache.xbean.finder.filter.Filters;
 import org.apache.xbean.finder.filter.IncludeExcludeFilter;
+import org.hibernate.cfg.AvailableSettings;
 
 import javax.ejb.embeddable.EJBContainer;
 import javax.enterprise.inject.Instance;
@@ -429,8 +431,11 @@ public class EmbeddedContainer {
         System.setProperty("hibernate.cache.use_second_level_cache", "false");
         System.setProperty("hibernate.cache.use_query_cache", "false");
 
+
+
         // Hier fuegen wir einen eigenen Scann fuer das Hibernateframework hinzu
-        //System.setProperty(AvailableSettings.SCANNER, StfpHibernateScanner.class.getCanonicalName());
+        System.setProperty("openejb.tempclassloader.skip", TempClassLoader.Skip.ALL.name());
+        System.setProperty(AvailableSettings.SCANNER, HfeHibernateScanner.class.getTypeName());
 
         if (!dataSourceProperties.containsKey(DeploymentFilterable.CLASSPATH_INCLUDE)) {
             dataSourceProperties.put(DeploymentFilterable.CLASSPATH_INCLUDE, ".*classes.*");

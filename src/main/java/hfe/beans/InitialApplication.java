@@ -6,6 +6,8 @@ import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.Session;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.engine.jdbc.spi.JdbcServices;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.jboss.security.plugins.JBossPolicyRegistration;
 
 import javax.annotation.PostConstruct;
@@ -56,7 +58,8 @@ public class InitialApplication {
 
     private String getDialect() throws Exception {
         Session session = getSession();
-        Dialect dbDialect = (Dialect) PropertyUtils.getProperty(session.getSessionFactory(), "dialect");
+        SessionFactoryImplementor factory = (SessionFactoryImplementor)session.getSessionFactory();
+        Dialect dbDialect = factory.getServiceRegistry().getService(JdbcServices.class).getJdbcEnvironment().getDialect();
         Logger.getLogger(InitialApplication.class.getSimpleName()).info("DB Dialect: " + dbDialect.getClass().getCanonicalName());
         return dbDialect.getClass().getCanonicalName();
     }
@@ -67,7 +70,7 @@ public class InitialApplication {
         return session;
     }
 
-    private DataSource getDataSource() throws SQLException {
+    DataSource getDataSource() throws SQLException {
         DataSource dataSource = (DataSource) getEntityManager().getEntityManagerFactory().getProperties().get(AvailableSettings.DATASOURCE);
         if(dataSource == null) {
             dataSource = (DataSource) getEntityManager().getEntityManagerFactory().getProperties().values().stream()

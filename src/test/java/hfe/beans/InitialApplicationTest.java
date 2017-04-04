@@ -3,13 +3,13 @@ package hfe.beans;
 import hfe.entity.Principal;
 import hfe.testing.OpenEjbNgListener;
 import hfe.tools.HfeUtils;
+import org.hibernate.exception.SQLGrammarException;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.persistence.PersistenceException;
 
 import static org.testng.AssertJUnit.assertNull;
 
@@ -22,6 +22,9 @@ public class InitialApplicationTest {
     @Inject
     private InitialApplication initialApplication;
 
+    @Inject
+    private TransactionBean transactionBean;
+
     @Test
     public void dropTables() throws Exception {
         initialApplication.dropTables(HfeUtils.getClassesFolderURL());
@@ -33,9 +36,13 @@ public class InitialApplicationTest {
         assertNull("Es gibt keine DUD-Id", entityManager.find(Principal.class, "DUD"));
     }
 
-    @Test(expectedExceptions = { PersistenceException.class })
-    public void executeFindAfterDropDatabase() throws Exception {
+    @Test(expectedExceptions = {SQLGrammarException.class})
+    public void executeFindAfterDropDatabase() throws Throwable {
         dropTables();
-        assertNull("Es gibt keine DUD-Id", entityManager.find(Principal.class, "DUD"));
+        try {
+            transactionBean.tryToProduceInNewTransaction(() -> entityManager.find(Principal.class, "DUD"));
+        } catch (Exception ex) {
+            throw ex.getCause().getCause();
+        }
     }
 }

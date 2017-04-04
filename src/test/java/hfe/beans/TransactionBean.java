@@ -1,4 +1,4 @@
-package hfe.testing.openejb;
+package hfe.beans;
 
 import javax.ejb.*;
 import java.util.concurrent.Callable;
