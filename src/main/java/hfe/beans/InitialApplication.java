@@ -106,8 +106,9 @@ public class InitialApplication {
     }
 
     private void bindPoliceRegistration() throws NamingException {
-        Object obj = new InitialContext().lookup("java:/policyRegistration");
-        if(obj == null) {
+        try {
+            new InitialContext().lookup("java:/policyRegistration");
+        } catch(NamingException e) {
             new InitialContext().bind("java:/policyRegistration", new JBossPolicyRegistration());
         }
     }

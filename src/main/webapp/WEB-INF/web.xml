@@ -4,34 +4,15 @@
          version="3.0">
 
 
-        <login-config>
-            <auth-method>BASIC</auth-method>
-            <!--realm-name>hfe</realm-name-->
-        </login-config>
+    <login-config>
+        <auth-method>BASIC</auth-method>
+        <!--auth-method>DIGEST</auth-method-->
+        <!--auth-method>FORM</auth-method>
+        <form-login-config>
+            <form-login-page>/login.xhtml</form-login-page>
+        </form-login-config-->
+        <!--realm-name>nop</realm-name-->
+    </login-config>
 
-    <!--
-    <security-constraint>
-        <web-resource-collection>
-            <url-pattern>/secure/*</url-pattern>
-        </web-resource-collection>
-        <auth-constraint>
-            <role-name>ROLEME</role-name>
-        </auth-constraint>
-    </security-constraint>
-    -->
-
-    <!--security-constraint>
-        <display-name>UnSecuredPages</display-name>
-
-        <web-resource-collection>
-            <web-resource-name>login-required</web-resource-name>
-            <url-pattern>/rest/login</url-pattern>
-        </web-resource-collection>
-
-        <web-resource-collection>
-            <web-resource-name>login-required</web-resource-name>
-            <url-pattern>/front/app/css/main.css</url-pattern>
-        </web-resource-collection>
-    </security-constraint-->
 
 </web-app>

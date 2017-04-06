@@ -2,9 +2,11 @@ package hfe.tools;
 
 import hfe.beans.InitialApplication;
 import org.apache.commons.dbutils.handlers.MapListHandler;
+import org.jboss.security.auth.spi.Util;
 
 import java.io.IOException;
 import java.net.URL;
+import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.util.*;
 import java.util.function.Function;
@@ -90,5 +92,10 @@ public class HfeUtils {
             clazz = clazz.getEnclosingClass();
         }
         return clazz;
+    }
+
+    public static String createPasswordHash(String username, String password) throws NoSuchAlgorithmException {
+        String passwordHash = Util.createPasswordHash("SHA-256", "base64", null, username, password, null);
+        return passwordHash;
     }
 }

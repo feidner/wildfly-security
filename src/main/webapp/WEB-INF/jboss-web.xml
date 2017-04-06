@@ -3,8 +3,4 @@
     <disable-audit>true</disable-audit>
     <context-root>hfe</context-root>
     <use-jboss-authorization></use-jboss-authorization>
-
-    <!--<security-role>
-        <role-name>ROLEME</role-name>
-    </security-role-->
 </jboss-web>
