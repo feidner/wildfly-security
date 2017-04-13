@@ -14,15 +14,10 @@ import org.apache.openejb.config.DeploymentFilterable;
 import org.apache.openejb.config.FinderFactory;
 import org.apache.openejb.core.TempClassLoader;
 import org.apache.openejb.loader.SystemInstance;
-import org.apache.xbean.finder.filter.Filter;
-import org.apache.xbean.finder.filter.Filters;
-import org.apache.xbean.finder.filter.IncludeExcludeFilter;
 import org.hibernate.cfg.AvailableSettings;
 
 import javax.ejb.embeddable.EJBContainer;
 import javax.enterprise.inject.Instance;
-import javax.naming.NameClassPair;
-import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
 import java.io.File;
@@ -78,27 +73,6 @@ public class EmbeddedContainer {
     private EmbeddedContainer() {
     }
 
-    //@Test
-    @SuppressWarnings("unused")
-    public void regexTestMitNegation() {
-        String s1 = "D:/stfp/TeamCityInstallation/buildAgent/work/e86cd687cac42766/backend/target/classes";
-        String s2 = "D:/stfp/TeamCityInstallation/buildAgent/work/e86cd687cac42766/backend/target/test-classes";
-        String s3 = "D:/stfp/TeamCityInstallation/buildAgent/work/e86cd687cac42766/ui/ui-ulc-server/target/classes";
-        String s4 = "stfp/backend-1.2.0-SNAPSHOT.jar";
-        String s5 = "stfp/backend-1.2.0-SNAPSHOT-tests.jar";
-        String s6 = "apache/commons-lang-2.3.4.jar";
-        Filter includeFilter = Filters.patterns(".*(target/classes|backend).*");
-        IncludeExcludeFilter filter = new IncludeExcludeFilter(includeFilter, Filters.patterns("(((.(?!SNAPSHOT))*|.*tests)\\.jar|.*test-classes)"));
-
-        log.info(format("Accept %s: %s", s1, filter.accept(s1)));
-        log.info(format("Accept %s: %s", s2, filter.accept(s2)));
-        log.info(format("Accept %s: %s", s3, filter.accept(s3)));
-
-        log.info(format("Accept %s: %s", s4, filter.accept(s4)));
-        log.info(format("Accept %s: %s", s5, filter.accept(s5)));
-        log.info(format("Accept %s: %s", s6, filter.accept(s6)));
-    }
-
     @SuppressWarnings("unused")
     public static EJBContainer startForUi(Object obj, Set<String> definitly) {
         log.info("Start EjbContainer fuer UI Test");
@@ -149,26 +123,6 @@ public class EmbeddedContainer {
             container.close();
             container = null;
         }
-    }
-
-    @SuppressWarnings("unused")
-    public static <T> Set<Class<T>> collectContextClasses(String regex) throws NamingException, ClassNotFoundException {
-        Set<Class<T>> classes = new HashSet<>();
-        NamingEnumeration<NameClassPair> enumeration = null;
-        try {
-            enumeration = container.getContext().list("java:global/backend");
-        } catch (NamingException e) {
-            enumeration = container.getContext().list("java:global/backend-1.2.0-SNAPSHOT");
-        }
-        while (enumeration.hasMoreElements()) {
-            NameClassPair pair = enumeration.next();
-            if (pair.getName().matches(regex)) {
-                @SuppressWarnings("unchecked") Class<T> clazz = (Class<T>) Class.forName(pair.getName().substring(pair.getName().indexOf("!") + 1));
-                //Object obj = container.getContext().lookup("java:global/backend/" + pair.getName());
-                classes.add(clazz);
-            }
-        }
-        return classes;
     }
 
     // ######################## PRIVATES #####################
