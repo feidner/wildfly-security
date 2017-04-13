@@ -1,5 +1,6 @@
 package hfe.beans;
 
+import hfe.tools.HfeDBUtils;
 import hfe.tools.HfeUtils;
 import hfe.tools.HibernateDDLGenerator;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -93,7 +94,7 @@ public class InitialApplication {
         DataSource dataSource = getDataSource();
         Logger.getLogger(InitialApplication.class.getSimpleName()).info("Drop DB");
         HibernateDDLGenerator.dropEntityTables(dataSource, getDialect(), classes);
-        HfeUtils.dropAllTablesIfStillSomeExists(dataSource.getConnection());
+        HfeDBUtils.dropAllTablesIfStillSomeExists(dataSource.getConnection());
     }
 
     private void createDatabase(URL classes) throws Exception {
@@ -102,7 +103,7 @@ public class InitialApplication {
         Logger.getLogger(InitialApplication.class.getSimpleName()).info("Create DB");
         HibernateDDLGenerator.createEntityTables(dataSource, dialect, classes);
         Logger.getLogger(getClass().getSimpleName()).info("Tabellen.....");
-        HfeUtils.getTableNames(dataSource.getConnection()).forEach(name -> Logger.getLogger(getClass().getSimpleName()).info(name));
+        HfeDBUtils.getTableNames(dataSource.getConnection()).forEach(name -> Logger.getLogger(getClass().getSimpleName()).info(name));
     }
 
     private void bindPoliceRegistration() throws NamingException {
